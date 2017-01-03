@@ -30,10 +30,10 @@ def getEboxUsage(event, context):
             remaining_str = div.contents[1][:-1]
             remaining = float(remaining_str)
             logger.info('%s GB remaining for account "%s".', remaining, code)
+            success = True
             if remaining < 30:
                 try:
                     ses.send_email(ReturnPath = email_from, Source = email_from, Destination={'ToAddresses': [email_to]}, Message={'Subject': {'Data': email_subject + remaining_str + 'GB for account ' + code},'Body': {'Text': {'Data': email_body + remaining_str + 'GB for account ' + code + '. http://conso.ebox.ca/'}}})
-                    success = True
                 except Exception, e:
                     print repr(e)
     return success
