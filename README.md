@@ -1,4 +1,4 @@
-# [Ebox](http://www.ebox.ca) usage script
+# [Ebox](https://www.ebox.ca) usage script
 A barebone python script to fetch the number of GB available on your ebox account. It can be used as standalone with minor modifications or in AWS lambda with SES for email notifications.
 
 ## How to use
