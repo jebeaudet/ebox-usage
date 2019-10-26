@@ -1,8 +1,9 @@
 from bs4 import BeautifulSoup
-import httplib, urllib
 import boto3
 import sys
 import logging
+import requests
+from datetime import datetime
 
 ses = boto3.client('ses')
 
@@ -11,29 +12,41 @@ email_subject = 'Your available usage is down to '
 email_body = 'Your available usage is down to '
 
 def getEboxUsage(event, context):
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
     success = False
-    code = event["code"]
-    email_to = event["email"]
-    logger.info('Starting script for account "%s" and email "%s".', code, email_to)
-    params = urllib.urlencode({'actions': 'list', 'DELETE_lng': 'en', 'lng': 'en','code': code})
-    headers = {"Content-type": "application/x-www-form-urlencoded"}
-    conn = httplib.HTTPConnection("conso.ebox.ca")
-    conn.request("POST", "/index.php", params, headers)
-    response=conn.getresponse()
-    data = response.read()
+    try:
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        success = False
+        code = event['code']
+        password = event['password']
+        email_to = event['email']
+        logger.info('Starting script for account \'%s\' and email \'%s\'.', code, email_to)
 
-    soup = BeautifulSoup(data, 'html.parser')
-    for div in soup.find_all('div'):
-        if div.b and "Available" in div.b.string:
-            remaining_str = div.contents[1][:-1]
-            remaining = float(remaining_str)
-            logger.info('%s GB remaining for account "%s".', remaining, code)
-            success = True
-            if remaining < 30:
-                try:
-                    ses.send_email(ReturnPath = email_from, Source = email_from, Destination={'ToAddresses': [email_to]}, Message={'Subject': {'Data': email_subject + remaining_str + 'GB for account ' + code},'Body': {'Text': {'Data': email_body + remaining_str + 'GB for account ' + code + '. http://conso.ebox.ca/'}}})
-                except Exception, e:
-                    print repr(e)
+        session = requests.session()
+        response = session.get('https://client.ebox.ca/')
+        soup = BeautifulSoup(response.content, 'html.parser')
+        form = soup.find('form', id='formLogin')
+        hidden_parameters = form.find_all('input', type='hidden')
+
+        login_form_params = {'usrname': code, 'pwd':password}
+        for param in hidden_parameters:
+            login_form_params[param.attrs['name']] = param.attrs['value']
+
+        session.post('https://client.ebox.ca/login', login_form_params)
+
+        now = datetime.now()
+        month = now.month
+        year = now.year
+        session.get(f'https://client.ebox.ca/ajax/usages?action=getMonth&m={month}&y={year}', headers={'X-Requested-With':'XMLHttpRequest'})
+        
+        response = session.get('https://client.ebox.ca/home')
+        soup = BeautifulSoup(response.content, 'html.parser')
+        used_ratio_list = ''.join(soup.find('span', {'class':'text_summary3'}).text.split()).split('Go')
+        remaining = float(used_ratio_list[1].replace('/','')) - float(used_ratio_list[0])
+        logger.info('%s GB remaining for account \'%s\'.', remaining, code)
+        success = True
+        if remaining < 30:
+            ses.send_email(ReturnPath = email_from, Source = email_from, Destination={'ToAddresses': [email_to]}, Message={'Subject': {'Data': email_subject + str(remaining) + 'GB for account ' + code},'Body': {'Text': {'Data': email_body + str(remaining) + 'GB for account ' + code + '. https://client.ebox.ca'}}})
+    except Exception:
+        logger.exception('Something went terribly wrong!')
     return success
