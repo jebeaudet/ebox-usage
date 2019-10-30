@@ -43,6 +43,7 @@ def getEboxUsage(event, context):
         soup = BeautifulSoup(response.content, 'html.parser')
         used_ratio_list = ''.join(soup.find('span', {'class':'text_summary3'}).text.split()).split('Go')
         remaining = float(used_ratio_list[1].replace('/','')) - float(used_ratio_list[0])
+        remaining = round(remaining, 2)
         logger.info('%s GB remaining for account \'%s\'.', remaining, code)
         success = True
         if remaining < 30:
