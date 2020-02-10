@@ -50,4 +50,5 @@ def getEboxUsage(event, context):
             ses.send_email(ReturnPath = email_from, Source = email_from, Destination={'ToAddresses': [email_to]}, Message={'Subject': {'Data': email_subject + str(remaining) + 'GB for account ' + code},'Body': {'Text': {'Data': email_body + str(remaining) + 'GB for account ' + code + '. https://client.ebox.ca'}}})
     except Exception:
         logger.exception('Something went terribly wrong!')
+        ses.send_email(ReturnPath = email_from, Source = email_from, Destination={'ToAddresses': ['xxxx@gmail.com']}, Message={'Subject': {'Data': 'Error in the script!'},'Body': {'Text': {'Data': 'Check logs!'}}})
     return success
