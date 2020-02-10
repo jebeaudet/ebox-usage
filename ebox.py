@@ -34,12 +34,7 @@ def getEboxUsage(event, context):
 
         session.post('https://client.ebox.ca/login', login_form_params)
 
-        now = datetime.now()
-        month = now.month
-        year = now.year
-        session.get(f'https://client.ebox.ca/ajax/usages?action=getMonth&m={month}&y={year}', headers={'X-Requested-With':'XMLHttpRequest'})
-        
-        response = session.get('https://client.ebox.ca/home')
+        response = session.get('https://client.ebox.ca/myusage')
         soup = BeautifulSoup(response.content, 'html.parser')
         used_ratio_list = ''.join(soup.find('span', {'class':'text_summary3'}).text.split()).split('Go')
         remaining = float(used_ratio_list[1].replace('/','')) - float(used_ratio_list[0])
